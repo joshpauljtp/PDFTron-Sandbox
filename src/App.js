@@ -16,12 +16,11 @@ const App = () => {
       viewer.current
     ).then((instance) => {
       const { documentViewer, annotationManager, Annotations } = instance.Core;
-
+      instance.UI.setToolbarGroup("toolbarGroup-Forms");
       instance.UI.disableElements([
         "leftPanel",
         "leftPanelButton",
         "viewControls",
-        "toolbarGroup-Annotate",
         "toolbarGroup-Insert",
         "toolbarGroup-Edit",
         "toolbarGroup-Shapes",
@@ -32,9 +31,43 @@ const App = () => {
         "comboBoxFieldToolGroupButton",
         "toolsOverlay",
         "viewControlsButton",
+        "toolbarGroup-Annotate",
+        "toolbarGroup-View",
       ]);
 
-      //Styling Checkbox
+      const renderButton = () => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.innerHTML = "Save and upload";
+        button.onclick = async () => {
+          const doc = documentViewer.getDocument();
+          const xfdfString = await annotationManager.exportAnnotations();
+          const data = await doc.getFileData({
+            // saves the document with annotations in it
+            xfdfString,
+          });
+          const arr = new Uint8Array(data);
+          const blob = new Blob([arr], { type: "application/pdf" });
+          fetch(
+            `https://www.filestackapi.com/api/store/S3?key=AK86diKTkS12U7nD8X5hHz`,
+            {
+              method: "POST",
+              body: blob,
+            }
+          ).then((response) => console.log(response.text()));
+        };
+        return button;
+      };
+
+      const newCustomElement = {
+        type: "customElement",
+        render: renderButton,
+      };
+
+      instance.UI.setHeaderItems(function(header) {
+        header.getHeader("ribbons").push(newCustomElement);
+      });
+
       Annotations.WidgetAnnotation.getCustomStyles = (widget) => {
         if (widget instanceof Annotations.CheckButtonWidgetAnnotation) {
           return {
